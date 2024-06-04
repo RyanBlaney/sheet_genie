@@ -130,11 +130,9 @@ The program can be built and installed using the respective setup file for your 
 
 ```sh
 # For macOS
-chmod +x install_mac.sh 
 ./install_mac.sh
 
 # For Linux
-chmod +x install_linux.sh
 ./install_linux.sh
 
 # For Windows
