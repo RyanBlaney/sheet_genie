@@ -61,12 +61,12 @@ sheet_genie schema new title:string description:string id:number
 **Add data to worksheet**:  
 This will add append the API data based on the schema that is passed in. It will append it to the current worksheet selected inside of the current Excel workbook (.xlsx) selected.
 ```sh
-./sheet_genie append api [API_URL] [SCHEMA]
+sheet_genie append api [API_URL] [SCHEMA]
 ```
 
 **Example**:  
 ```sh
-./sheet_genie append api http://localhost:4000/bug_reports my_schema
+sheet_genie append api http://localhost:4000/bug_reports my_schema
 ```
 
 ## Prerequisites
