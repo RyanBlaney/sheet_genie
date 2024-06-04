@@ -2,6 +2,73 @@
 
 SheetGenie is a command line script that automates the process of collecting data from an API and appending it to an Excel sheet. You can also create and organize sheet tabs, and navigate through entire projects full of workbooks. Formatting configurations and commands are also in progress.
 
+## Usage
+
+
+**Create Project**:
+```sh
+sheet_genie new [NAME]
+```
+**Create a new Excel workbook**:
+```sh
+sheet_genie workbook new [NAME]
+# or alternatively
+sheet_genie wb new [NAME]
+```
+
+**List all workbooks**:
+```sh
+sheet_genie workbook list
+# or alternatively
+sheet_genie wb list
+```
+**Set active workbook**:
+```sh
+sheet_genie workbook open [NAME]
+# or alternatively
+sheet_genie wb select [NAME]
+```
+**Create a new worksheet tab**:
+```sh
+sheet_genie worksheet new [NAME]
+# or alternatively
+sheet_genie ws new [NAME]
+```
+
+**List all worksheets**:
+```sh
+sheet_genie workbook list
+# or alternatively
+sheet_genie wb list
+```
+**Set active worksheet tab**:
+```sh
+sheet_genie worksheet open [NAME]
+# or alternatively
+sheet_genie ws select [NAME]
+```
+### Adding data from an API 
+**Create Schema**:  
+This is your template for extracting items from the API. The NAME is the key you're trying to extract from the API and the TYPE is the datatype (i.e. string, number, text, etc.). You can add as many of these as you want.
+```sh
+sheet_genie schema new [NAME]:[TYPE] [NAME]:[TYPE]...
+```
+**Example:**
+```sh
+sheet_genie schema new title:string description:string id:number
+```
+
+**Add data to worksheet**:  
+This will add append the API data based on the schema that is passed in. It will append it to the current worksheet selected inside of the current Excel workbook (.xlsx) selected.
+```sh
+./sheet_genie append api [API_URL] [SCHEMA]
+```
+
+**Example**:  
+```sh
+./sheet_genie append api http://localhost:4000/bug_reports my_schema
+```
+
 ## Prerequisites
 
 In order to run Elixir applications, you must first have Elixir and the Erlang VM installed on your machine. To do this, you must first have a package manager such as Homebrew (Mac), Chocolatey (Windows), or any Linux distro's package manager.

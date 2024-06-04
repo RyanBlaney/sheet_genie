@@ -31,9 +31,6 @@ defmodule SheetGenie do
     }
 
     File.write!(config_file, Jason.encode!(state_data, pretty: true))
-
-    # Copy the sheet_genie executable
-    File.cp!("./sheet_genie", Path.join(name, "sheet_genie"))
   end
 
   def create_excel_file(file_path) do
