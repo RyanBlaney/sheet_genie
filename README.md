@@ -114,12 +114,12 @@ In order to run Elixir applications, you must first have Elixir and the Erlang V
     sudo apt install -y esl-erlang elixir
    ```
 
-   **Fedora:**:
+   **Fedora:**
    ```sh
     sudo dnf install -y erlang elixir
    ```
 
-   **Arch Linux:**:
+   **Arch Linux:**
    ```sh
     sudo pacman -S erlang elixir
    ```
