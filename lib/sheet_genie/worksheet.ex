@@ -90,12 +90,20 @@ defmodule SheetGenie.Worksheet do
 
     current_sheet_name = current_workbook["current_sheet"]
 
+    append_mode = state_data["config"]["append_mode"]
+
     updated_sheets =
       Enum.map(current_workbook["sheets"], fn sheet ->
         if sheet["name"] == current_sheet_name do
+          updated_rows =
+            case append_mode do
+              "columns" -> append_as_columns(sheet["rows"], processed_data)
+              _ -> sheet["rows"] ++ processed_data
+            end
+
           %{
             "name" => sheet["name"],
-            "rows" => sheet["rows"] ++ processed_data
+            "rows" => updated_rows
           }
         else
           sheet
@@ -120,5 +128,18 @@ defmodule SheetGenie.Worksheet do
     SheetGenie.Utils.write_state_file(updated_state)
     SheetGenie.Workbook.update_excel_file(current_workbook_path, updated_workbook)
     IO.puts("Data appended successfully to #{current_sheet_name}.")
+  end
+
+  defp append_as_columns(existing_rows, new_data) do
+    max_length = max(length(existing_rows), length(new_data))
+
+    # Ensure all rows have the same length
+    existing_rows =
+      Enum.map(existing_rows, &Enum.concat(&1, List.duplicate(nil, max_length - length(&1))))
+
+    new_data = Enum.map(new_data, &Enum.concat(&1, List.duplicate(nil, max_length - length(&1))))
+
+    Enum.zip(existing_rows, new_data)
+    |> Enum.map(fn {row, new_cols} -> row ++ new_cols end)
   end
 end

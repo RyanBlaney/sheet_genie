@@ -22,7 +22,10 @@ defmodule SheetGenie.Project do
           "current_sheet" => "Sheet1",
           "sheets" => [%{"name" => "Sheet1", "rows" => []}]
         }
-      ]
+      ],
+      "config" => %{
+        "append_mode" => "rows"
+      }
     }
 
     File.write!(config_file, Jason.encode!(state_data, pretty: true))
