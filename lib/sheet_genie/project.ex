@@ -24,7 +24,7 @@ defmodule SheetGenie.Project do
         }
       ],
       "config" => %{
-        "append_mode" => "rows"
+        "append_mode" => "columns"
       }
     }
 
