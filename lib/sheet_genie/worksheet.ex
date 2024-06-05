@@ -113,22 +113,19 @@ defmodule SheetGenie.Worksheet do
     updated_workbook = Map.put(current_workbook, "sheets", updated_sheets)
 
     updated_state =
-      Map.put(
-        state_data,
-        "workbooks",
-        Enum.map(state_data["workbooks"], fn workbook ->
+      Map.update!(state_data, "workbooks", fn workbooks ->
+        Enum.map(workbooks, fn workbook ->
           if workbook["path"] == current_workbook_path do
             updated_workbook
           else
             workbook
           end
         end)
-      )
+      end)
 
     SheetGenie.Utils.write_state_file(updated_state)
     SheetGenie.Workbook.update_excel_file(current_workbook_path, updated_workbook)
 
-    IO.puts("Updated sheets: #{inspect(updated_sheets)}")
     IO.puts("Data appended successfully to #{current_sheet_name}.")
   end
 
