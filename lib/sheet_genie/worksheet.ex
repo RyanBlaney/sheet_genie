@@ -127,6 +127,8 @@ defmodule SheetGenie.Worksheet do
 
     SheetGenie.Utils.write_state_file(updated_state)
     SheetGenie.Workbook.update_excel_file(current_workbook_path, updated_workbook)
+
+    IO.puts("Updated sheets: #{inspect(updated_sheets)}")
     IO.puts("Data appended successfully to #{current_sheet_name}.")
   end
 
