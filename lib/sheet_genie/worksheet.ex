@@ -81,6 +81,7 @@ defmodule SheetGenie.Worksheet do
 
   def append_to_current_worksheet(processed_data) do
     state_data = SheetGenie.Utils.read_state_file()
+    IO.puts("Initial state data: #{inspect(state_data)}")
     current_workbook_path = state_data["current_workbook"]
 
     current_workbook =
@@ -92,14 +93,20 @@ defmodule SheetGenie.Worksheet do
 
     append_mode = state_data["config"]["append_mode"]
 
+    IO.puts("Processed data: #{inspect(processed_data)}")
+
     updated_sheets =
       Enum.map(current_workbook["sheets"], fn sheet ->
         if sheet["name"] == current_sheet_name do
+          IO.puts("Current sheet before append: #{inspect(sheet)}")
+
           updated_rows =
             case append_mode do
               "columns" -> append_as_columns(sheet["rows"], processed_data)
               _ -> sheet["rows"] ++ processed_data
             end
+
+          IO.puts("Updated rows: #{inspect(updated_rows)}")
 
           %{
             "name" => sheet["name"],
@@ -125,31 +132,36 @@ defmodule SheetGenie.Worksheet do
       end)
 
     IO.puts("Updated state before writing to file: #{inspect(updated_state)}")
-
     SheetGenie.Utils.write_state_file(updated_state)
     SheetGenie.Workbook.update_excel_file(current_workbook_path, updated_workbook)
-
     IO.puts("Data appended successfully to #{current_sheet_name}.")
   end
 
   defp append_as_columns(existing_rows, new_data) do
-    max_length = max(length(existing_rows), length(new_data))
+    IO.puts("Existing rows before padding: #{inspect(existing_rows)}")
+    IO.puts("New data before padding: #{inspect(new_data)}")
 
-    # Ensure all rows have the same length
-    padded_existing_rows = Enum.map(existing_rows, &pad_row(&1, max_length))
-    padded_new_data = Enum.map(new_data, &pad_row(&1, max_length))
+    # Transpose the new data so columns become rows
+    transposed_new_data = transpose(new_data)
 
-    Enum.zip(padded_existing_rows, padded_new_data)
-    |> Enum.map(fn {row, new_cols} -> row ++ new_cols end)
+    IO.puts("Transposed new data: #{inspect(transposed_new_data)}")
+
+    # Handle case where there are no existing rows
+    updated_rows =
+      if existing_rows == [] do
+        transposed_new_data
+      else
+        Enum.zip(existing_rows, transposed_new_data)
+        |> Enum.map(fn {existing_row, new_cols} -> existing_row ++ new_cols end)
+      end
+
+    IO.puts("Updated rows: #{inspect(updated_rows)}")
+    updated_rows
   end
 
-  defp pad_row(row, length) do
-    row_length = length(row)
-
-    if row_length < length do
-      row ++ List.duplicate(nil, length - row_length)
-    else
-      row
-    end
+  defp transpose(lists) do
+    lists
+    |> Enum.zip()
+    |> Enum.map(&Tuple.to_list/1)
   end
 end
