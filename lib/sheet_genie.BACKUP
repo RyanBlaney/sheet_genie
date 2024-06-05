@@ -3,18 +3,6 @@ defmodule SheetGenie do
   Documentation for `SheetGenie`.
   """
 
-  @doc """
-  SheetGenie is a tool for quickly extracting API data and converting it to a formatted excel sheet
-
-  ## Examples
-
-      iex> SheetGenie new MySheet
-      iex> File.cd!(MySheet)
-      iex> SheetGenie ws new NewWorksheet
-
-
-  """
-
   @state_file "config/state.json"
   @schema_file "config/schemas.json"
 
@@ -37,18 +25,15 @@ defmodule SheetGenie do
         %{
           "path" => "#{name}.xlsx",
           "current_sheet" => "Sheet1",
-          "sheets" => ["Sheet1"]
+          "sheets" => [%{"name" => "Sheet1", "rows" => []}]
         }
       ]
     }
 
     File.write!(config_file, Jason.encode!(state_data, pretty: true))
-
-    # @@P 
-    File.cp!("./sheet_genie", Path.join(name, "sheet_genie"))
   end
 
-  defp create_excel_file(file_path) do
+  def create_excel_file(file_path) do
     sheet = %Elixlsx.Sheet{name: "Sheet1", rows: []}
     workbook = %Elixlsx.Workbook{sheets: [sheet]}
 
@@ -59,18 +44,14 @@ defmodule SheetGenie do
   end
 
   def create_worksheet(sheet_name) do
-    state_file = @state_file
-
-    # Read the state file to get the current workbook path and sheets
-    state_data = File.read!(state_file) |> Jason.decode!()
-    current_workbook = state_data["current_workbook"]
+    state_data = read_state_file()
+    current_workbook_path = state_data["current_workbook"]
     workbooks = state_data["workbooks"]
 
-    # Update the workbooks with the new sheet
     updated_workbooks =
       Enum.map(workbooks, fn workbook ->
-        if workbook["path"] == current_workbook do
-          updated_sheets = [sheet_name | workbook["sheets"]]
+        if workbook["path"] == current_workbook_path do
+          updated_sheets = [%{"name" => sheet_name, "rows" => []} | workbook["sheets"]]
 
           %{
             "path" => workbook["path"],
@@ -82,97 +63,57 @@ defmodule SheetGenie do
         end
       end)
 
-    # Create sheet structs for the updated workbook
-    sheet_structs =
-      Enum.flat_map(updated_workbooks, fn workbook ->
-        if workbook["path"] == current_workbook do
-          Enum.map(workbook["sheets"], fn name -> %Elixlsx.Sheet{name: name, rows: []} end)
-        else
-          []
-        end
-      end)
-
-    updated_workbook = %Elixlsx.Workbook{sheets: sheet_structs}
-
-    # Write the updated workbook back to the file
-    case Elixlsx.write_to(updated_workbook, current_workbook) do
-      {:ok, _} -> IO.puts("Worksheet #{sheet_name} added successfully.")
-      {:error, reason} -> IO.puts("Failed to add worksheet: #{reason}")
-    end
-
-    # Update the state data with the updated workbooks
     updated_state = Map.put(state_data, "workbooks", updated_workbooks)
-    File.write!(state_file, Jason.encode!(updated_state, pretty: true))
+    write_state_file(updated_state)
+
+    current_workbook =
+      Enum.find(updated_workbooks, fn workbook -> workbook["path"] == current_workbook_path end)
+
+    update_excel_file(current_workbook_path, current_workbook)
+    IO.puts("Worksheet #{sheet_name} added successfully.")
   end
 
   def create_workbook(name) do
     name = sanitize_name(name)
-
-    state_file = @state_file
-
     file_path = "#{name}.xlsx"
 
-    sheet = %Elixlsx.Sheet{name: "Sheet1", rows: []}
-    workbook = %Elixlsx.Workbook{sheets: [sheet]}
+    create_excel_file(file_path)
 
-    case Elixlsx.write_to(workbook, file_path) do
-      {:ok, _} -> IO.puts("Workbook created successfully at #{file_path}")
-      {:error, reason} -> IO.puts("Failed to create Excel file: #{reason}")
-    end
-
-    state_data =
-      if File.exists?(state_file) do
-        File.read!(state_file) |> Jason.decode!()
-      else
-        %{}
-      end
+    state_data = read_state_file()
 
     new_workbook = %{
       "path" => file_path,
       "current_sheet" => "Sheet1",
-      "sheets" => ["Sheet1"]
+      "sheets" => [%{"name" => "Sheet1", "rows" => []}]
     }
 
-    # Append the new workbook to the list of workbooks
     updated_workbooks = state_data["workbooks"] ++ [new_workbook]
 
-    # Create the updated state with the current workbook and workbooks
     updated_state =
       state_data
       |> Map.put("current_workbook", file_path)
       |> Map.put("workbooks", updated_workbooks)
 
-    File.write!(state_file, Jason.encode!(updated_state, pretty: true))
+    write_state_file(updated_state)
+    IO.puts("Workbook created successfully at #{file_path}.")
   end
 
   def open_workbook(name) do
     name = sanitize_name(name)
-
-    state_data =
-      if File.exists?(@state_file) do
-        File.read!(@state_file) |> Jason.decode!()
-      else
-        %{}
-      end
-
+    state_data = read_state_file()
     workbook_path = "#{name}.xlsx"
 
     workbook = Enum.find(state_data["workbooks"], fn wb -> wb["path"] == workbook_path end)
 
     if workbook do
-      sheets = workbook["sheets"]
-
-      updated_state =
-        state_data
-        |> Map.put("current_workbook", workbook_path)
-
-      File.write!(@state_file, updated_state |> Jason.encode!(pretty: true))
+      updated_state = Map.put(state_data, "current_workbook", workbook_path)
+      write_state_file(updated_state)
 
       IO.puts(
-        "Workbook '#{name}.xlsx' opened successfully with sheets: #{Enum.join(sheets, ", ")}"
+        "Workbook '#{name}.xlsx' opened successfully with sheets: #{Enum.map(workbook["sheets"], fn sheet -> sheet["name"] end) |> Enum.join(", ")}"
       )
 
-      {:ok, sheets}
+      {:ok, workbook["sheets"]}
     else
       IO.puts("Workbook '#{name}.xlsx' not found in the current state.")
       {:error, :not_found}
@@ -181,14 +122,7 @@ defmodule SheetGenie do
 
   def open_worksheet(name) do
     name = sanitize_name(name)
-
-    state_data =
-      if File.exists?(@state_file) do
-        File.read!(@state_file) |> Jason.decode!()
-      else
-        %{"workbooks" => []}
-      end
-
+    state_data = read_state_file()
     current_workbook_path = state_data["current_workbook"]
 
     updated_workbooks =
@@ -201,18 +135,11 @@ defmodule SheetGenie do
       end)
 
     updated_state = Map.put(state_data, "workbooks", updated_workbooks)
-
-    File.write!(@state_file, Jason.encode!(updated_state, pretty: true))
+    write_state_file(updated_state)
   end
 
   def list_worksheet do
-    state_data =
-      if File.exists?(@state_file) do
-        File.read!(@state_file) |> Jason.decode!()
-      else
-        %{"workbooks" => []}
-      end
-
+    state_data = read_state_file()
     current_workbook_path = state_data["current_workbook"]
 
     current_workbook =
@@ -225,48 +152,37 @@ defmodule SheetGenie do
 
       current_sheet =
         Enum.find(current_workbook["sheets"], fn sheet ->
-          sheet == current_sheet_name
+          sheet["name"] == current_sheet_name
         end)
 
       if current_sheet do
-        IO.puts("Selected worksheet tab: #{current_sheet}")
+        IO.puts("Selected worksheet tab: #{current_sheet_name}")
         IO.puts("---")
+
+        Enum.each(current_sheet["rows"], fn row ->
+          IO.puts("#{Enum.join(row, ", ")}")
+        end)
       else
         IO.puts("Current sheet not found.")
       end
-
-      current_workbook["sheets"]
-      |> Enum.each(fn sheet ->
-        IO.puts("#{sheet}")
-      end)
     else
       IO.puts("Current workbook not found.")
     end
   end
 
   def list_workbook do
-    state_data =
-      if File.exists?(@state_file) do
-        File.read!(@state_file) |> Jason.decode!()
-      else
-        %{"workbooks" => []}
-      end
+    state_data = read_state_file()
 
-    state_data["workbooks"]
-    |> Enum.each(fn workbook ->
+    Enum.each(state_data["workbooks"], fn workbook ->
       IO.puts("Workbook path: #{workbook["path"]}")
       IO.puts("Current sheet: #{workbook["current_sheet"]}")
-      IO.puts("Sheets: #{Enum.join(workbook["sheets"], ", ")}")
+
+      IO.puts(
+        "Sheets: #{Enum.map(workbook["sheets"], fn sheet -> sheet["name"] end) |> Enum.join(", ")}"
+      )
+
       IO.puts("---")
     end)
-  end
-
-  defp sanitize_name(name) do
-    if String.ends_with?(name, ".xlsx") do
-      String.trim_trailing(name, ".xlsx")
-    else
-      name
-    end
   end
 
   def create_schema(name, schema) do
@@ -336,11 +252,9 @@ defmodule SheetGenie do
   end
 
   def append_to_current_worksheet(processed_data) do
-    # Read the state file to get the current workbook path and sheets
-    state_data = File.read!(@state_file) |> Jason.decode!()
+    state_data = read_state_file()
     current_workbook_path = state_data["current_workbook"]
 
-    # Find the current workbook
     current_workbook =
       Enum.find(state_data["workbooks"], fn workbook ->
         workbook["path"] == current_workbook_path
@@ -348,7 +262,6 @@ defmodule SheetGenie do
 
     current_sheet_name = current_workbook["current_sheet"]
 
-    # Append data to the current sheet in memory
     updated_sheets =
       Enum.map(current_workbook["sheets"], fn sheet ->
         if sheet["name"] == current_sheet_name do
@@ -361,10 +274,8 @@ defmodule SheetGenie do
         end
       end)
 
-    # Update the workbook with the modified sheet
     updated_workbook = Map.put(current_workbook, "sheets", updated_sheets)
 
-    # Update the state data
     updated_state =
       Map.put(
         state_data,
@@ -378,10 +289,32 @@ defmodule SheetGenie do
         end)
       )
 
-    # Write the updated state back to the state file
-    File.write!(@state_file, Jason.encode!(updated_state, pretty: true))
+    write_state_file(updated_state)
+    update_excel_file(current_workbook_path, updated_workbook)
+    IO.puts("Data appended successfully to #{current_sheet_name}.")
+  end
 
-    # Convert the in-memory workbook state to Elixlsx format and write it to the Excel file
+  defp sanitize_name(name) do
+    if String.ends_with?(name, ".xlsx") do
+      String.trim_trailing(name, ".xlsx")
+    else
+      name
+    end
+  end
+
+  defp read_state_file do
+    if File.exists?(@state_file) do
+      File.read!(@state_file) |> Jason.decode!()
+    else
+      %{"workbooks" => []}
+    end
+  end
+
+  defp write_state_file(state_data) do
+    File.write!(@state_file, Jason.encode!(state_data, pretty: true))
+  end
+
+  defp update_excel_file(current_workbook_path, updated_workbook) do
     elixlsx_sheets =
       Enum.map(updated_workbook["sheets"], fn sheet ->
         %Elixlsx.Sheet{name: sheet["name"], rows: sheet["rows"]}
@@ -390,8 +323,8 @@ defmodule SheetGenie do
     elixlsx_workbook = %Elixlsx.Workbook{sheets: elixlsx_sheets}
 
     case Elixlsx.write_to(elixlsx_workbook, current_workbook_path) do
-      {:ok, _} -> IO.puts("Data appended successfully to #{current_sheet_name}.")
-      {:error, reason} -> IO.puts("Failed to append data: #{reason}")
+      {:ok, _} -> IO.puts("Excel file updated successfully at #{current_workbook_path}.")
+      {:error, reason} -> IO.puts("Failed to update Excel file: #{reason}")
     end
   end
 end
