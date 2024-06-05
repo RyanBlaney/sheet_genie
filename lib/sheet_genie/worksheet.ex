@@ -111,6 +111,7 @@ defmodule SheetGenie.Worksheet do
       end)
 
     updated_workbook = Map.put(current_workbook, "sheets", updated_sheets)
+    IO.puts("Updated workbook: #{inspect(updated_workbook)}")
 
     updated_state =
       Map.update!(state_data, "workbooks", fn workbooks ->
@@ -122,6 +123,8 @@ defmodule SheetGenie.Worksheet do
           end
         end)
       end)
+
+    IO.puts("Updated state before writing to file: #{inspect(updated_state)}")
 
     SheetGenie.Utils.write_state_file(updated_state)
     SheetGenie.Workbook.update_excel_file(current_workbook_path, updated_workbook)
