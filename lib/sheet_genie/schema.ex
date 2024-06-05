@@ -48,6 +48,8 @@ defmodule SheetGenie.Schema do
       # Process data according to schema
       processed_data = process_data(data["data"], schema["schema"])
 
+      IO.puts("Processed data: #{inspect(processed_data)}")
+
       # Append data to current worksheet
       SheetGenie.Worksheet.append_to_current_worksheet(processed_data)
     end

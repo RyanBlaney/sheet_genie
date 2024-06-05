@@ -134,12 +134,20 @@ defmodule SheetGenie.Worksheet do
     max_length = max(length(existing_rows), length(new_data))
 
     # Ensure all rows have the same length
-    existing_rows =
-      Enum.map(existing_rows, &Enum.concat(&1, List.duplicate(nil, max_length - length(&1))))
+    padded_existing_rows = Enum.map(existing_rows, &pad_row(&1, max_length))
+    padded_new_data = Enum.map(new_data, &pad_row(&1, max_length))
 
-    new_data = Enum.map(new_data, &Enum.concat(&1, List.duplicate(nil, max_length - length(&1))))
-
-    Enum.zip(existing_rows, new_data)
+    Enum.zip(padded_existing_rows, padded_new_data)
     |> Enum.map(fn {row, new_cols} -> row ++ new_cols end)
+  end
+
+  defp pad_row(row, length) do
+    row_length = length(row)
+
+    if row_length < length do
+      row ++ List.duplicate(nil, length - row_length)
+    else
+      row
+    end
   end
 end

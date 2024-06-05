@@ -1,0 +1,13 @@
+{
+  "my_schema": {
+    "formatting": {},
+    "name": "my_schema",
+    "schema": [
+      "title:string",
+      "description:string",
+      "status:string",
+      "assignee:string",
+      "tags:string"
+    ]
+  }
+}
